@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import pandas as pd
 
 
 class Page:
@@ -91,9 +92,72 @@ class Page:
             api_key_3, base_url_3, model_3, max_tokens_3, temperature_3, top_p_3 = model_param_section(
                 "文档解析模型参数设置", key_prefix="param_3"
             )
+            # TODO 保存的配置信息需要传给模型
+            if st.button("保存配置"):
+                pass
 
         with pagination_2:
-            pass
+            cols = st.columns([1, 1])
+
+            # 测试用例参数配置
+            with cols[0].expander(":rose: **测试用例参数配置（可选）**"):
+                # 添加测试用例数量控制
+                test_case_count_range = st.slider("生成测试用例数量范围", help="指定生成的测试用例数"
+                                                                               "量范围", min_value=0,
+                                                  max_value=100, value=(5, 10), step=1)
+            # 支持上传人工测试用例用于对比
+            # upload_manual_test_cases = cols[0].checkbox(":heart: **上传人工测试用例（需要支持更多常见格式）**", False)
+            # st.session_state是Streamlit提供的一个机制，用于存储和共享应用中的状态（如变量值），
+            # 从而在不同的交互和页面刷新之间保持数据的持续性，一些状态值（动态变化）都推荐使用st.session_state来控制
+            # if 'upload_manual_test_cases' not in st.session_state:
+            #     st.session_state.upload_manual_test_cases = False
+            # if cols[0].button(":heart: **上传人工测试用例（可选）（需要支持更多常见格式）**"):
+            #     st.session_state.upload_manual_test_cases = not st.session_state.upload_manual_test_cases
+            # if st.session_state.upload_manual_test_cases:
+            #     manual_test_cases = cols[0].file_uploader("用例上传", type=["xlsx", "txt"])
+            #     if manual_test_cases is not None:
+            #         if manual_test_cases.name.endswith(".xlsx"):
+            #             manual_test_cases = pd.read_excel(manual_test_cases)
+            #             formatted = []
+            #             headers = " | ".join(manual_test_cases.columns)
+            #             formatted.append(headers)
+            #             # 添加行数据
+            #             for _, row in manual_test_cases.iterrows():
+            #                 formatted.append(" | ".join(str(x) for x in row.values))
+            #         elif manual_test_cases.name.endswith('.txt'):
+            #             # 处理文本文件
+            #             manual_test_cases = manual_test_cases.read().decode("utf-8", 'ignore')
+            #
+            #     manual_case_inputs = cols[0].text_area("人工测试用例",
+            #                                            height=200,
+            #                                            value=manual_test_cases,
+            #                                            placeholder="上传测试用例文件或手动在此填写测试用例"
+            #                                            )
+            with cols[0].expander(":heart: **上传人工测试用例（可选）（需要支持更多常见格式）**"):
+                manual_test_cases = st.file_uploader("用例上传", type=["xlsx", "txt"])
+                if manual_test_cases is not None:
+                    if manual_test_cases.name.endswith(".xlsx"):
+                        manual_test_cases = pd.read_excel(manual_test_cases)
+                        formatted = []
+                        headers = " | ".join(manual_test_cases.columns)
+                        formatted.append(headers)
+                        # 添加行数据
+                        for _, row in manual_test_cases.iterrows():
+                            formatted.append(" | ".join(str(x) for x in row.values))
+                    elif manual_test_cases.name.endswith('.txt'):
+                        # 处理文本文件
+                        manual_test_cases = manual_test_cases.read().decode("utf-8", 'ignore')
+
+                manual_case_inputs = st.text_area("人工测试用例",
+                                                       height=200,
+                                                       value=manual_test_cases,
+                                                       placeholder="上传测试用例文件或手动在此填写测试用例"
+                                                       )
+
+            # 上传产品需求文档
+            with cols[0].expander(":fire: **PRD配置（必选）**"):
+                upload_prd = st.file_uploader("**上传产品需求文档（需要支持更多格式，如带图文档，纯文字文档等）**", type="txt")
+
 
 
 if __name__ == "__main__":
