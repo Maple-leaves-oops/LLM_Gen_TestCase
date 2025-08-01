@@ -1,6 +1,8 @@
 import streamlit as st
 import os
 import pandas as pd
+import json
+import time
 
 
 class Page:
@@ -43,42 +45,7 @@ class Page:
                     """
                 )
 
-        # 定义一个函数来处理模型参数设置
-        # TODO 参数需要根据yaml（暂定）配置文件来设置，包括index参数
-        # 当多个控件具有相同的标签或默认值时，它们会被认为是重复的，所以为每个st控件添加一个唯一的key_prefix参数，避免冲突。
-        def model_param_section(title, col_widths=None, need_to_config_value="need_to_config", key_prefix=""):
-            if col_widths is None:
-                col_widths = [1, 1, 1]
-            st.subheader(title)
-            cols_2 = st.columns(col_widths)
-
-            api_key = cols_2[0].text_input(f"{need_to_config_value}_api_key", value=need_to_config_value,
-                                           help="输入模型的api_key", key=f"{key_prefix}_api_key")
-            base_url = cols_2[1].selectbox("base_url", [need_to_config_value], index=0, help="输入模型的api接口地址",
-                                           key=f"{key_prefix}_base_url")
-            model = cols_2[2].selectbox("model", [need_to_config_value], index=0, help="选择模型来完成该部分任务",
-                                        key=f"{key_prefix}_model")
-            max_tokens = cols_2[0].number_input(f"{model}最大输出Token:",
-                                                max_value=2048,
-                                                min_value=0,
-                                                value=0,
-                                                help=f"最大值：2048；最小值：0", key=f"{key_prefix}_max_tokens")
-            temperature = cols_2[1].number_input(f"{model}模型随机性参数temperature:",
-                                                 max_value=20,
-                                                 min_value=0,
-                                                 value=0,
-                                                 help="模型随机性参数，数字越大，生成的结果随机性越大，一般为0.7，如果希望AI提供更多的想法，可以调大该数字",
-                                                 key=f"{key_prefix}_temperature")
-            top_p = cols_2[2].number_input(f"{model}模型随机性参数top:",
-                                           max_value=10,
-                                           min_value=0,
-                                           value=0,
-                                           help="模型随机性参数，接近 1 时：模型几乎会考虑所有可能的词，只有概率极低的词才会被排除，随机性也越强；",
-                                           key=f"{key_prefix}_top_p")
-
-            return api_key, base_url, model, max_tokens, temperature, top_p
-
-        pagination_1, pagination_2 = st.tabs(["功能交互", "模型设置", ])
+        pagination_1, pagination_2, pagination_3 = st.tabs(["功能交互", "模型设置", "MCP服务"])
 
         with pagination_1:
             cols_1 = st.columns([1, 1])
@@ -168,34 +135,134 @@ class Page:
 
             # 给编写用例的LLM的提示词
             with cols_1[1].expander(":palm_tree: **编写用例模型提示词（必选）**"):
-                gen_test_case_prompt = st.text_area("**编写用例提示词预览**", height=400, value=None, placeholder="need_to_config")
+                with open('./Templates/gen_cases_model_prompt.txt', 'r', encoding='utf-8') as f:
+                    gen_cases_model_prompt = f.read()
+                gen_cases_model_prompt = st.text_area("**编写用例提示词预览**", height=400, value=gen_cases_model_prompt,
+                                                      placeholder="need_to_config")
             # 给评审用例的LLM的提示词
             with cols_1[1].expander(":cyclone: **评审用例模型提示词（必选）**"):
-                review_test_case_prompt = st.text_area("**评审用例提示词预览**", height=400, value=None,
-                                                       placeholder="need_to_config")
+                with open('./Templates/review_cases_model_prompt.txt', 'r', encoding='utf-8') as f:
+                    review_cases_model_prompt = f.read()
+                review_cases_model_prompt = st.text_area("**评审用例提示词预览**", height=400,
+                                                         value=review_cases_model_prompt, placeholder="need_to_config")
             if not st.session_state.no_image_analysis:
                 # 给文档解析的LLM的提示词
                 with cols_1[1].expander(":maple_leaf: **文档解析模型提示词（必选）**"):
-                    analysis_document_prompt = st.text_area("**文档解析提示词预览**", height=400, value=None,
-                                                            placeholder="need_to_config")
+                    with open('./Templates/analysis_prd_model_prompt.txt', 'r', encoding='utf-8') as f:
+                        analysis_prd_model_prompt = f.read()
+                    analysis_prd_model_prompt = st.text_area("**文档解析提示词预览**", height=400,
+                                                             value=analysis_prd_model_prompt,
+                                                             placeholder="need_to_config")
+
+            # 定义一个函数来处理模型参数设置
+            # TODO 参数需要根据yaml（暂定）配置文件来设置，包括index参数
+            # 当多个控件具有相同的标签或默认值时，它们会被认为是重复的，所以为每个st控件添加一个唯一的key_prefix参数，避免冲突。
+            def model_param_section(title, config_value, col_widths=None, key_prefix="", model_select="deepseek"):
+                # 加载特定模型配置，默认为deepseek
+                conf = config_value[model_select]
+
+                if col_widths is None:
+                    col_widths = [1, 1, 1]
+                images_dict = {"param_1": ":sparkles:", "param_2": ":dizzy:", "param_3": ":star2:", }
+                # subheader好像不支持markdown解析
+                # st.subheader(":maple_leaf:" + title)
+                st.markdown(f"### {images_dict[key_prefix]} {title}")
+                cols_2 = st.columns(col_widths)
+
+                api_key = cols_2[0].text_input(f"{model_select}_api_key", value=conf["api_key"],
+                                               help="输入模型的api_key", key=f"{key_prefix}_api_key")
+                base_url = cols_2[1].selectbox("base_url", options=conf["base_url_list"], index=0,
+                                               help="输入模型的api接口地址",
+                                               key=f"{key_prefix}_base_url")
+                model = cols_2[2].selectbox("model", conf["model_list"], index=0,
+                                            help="选择模型来完成该部分任务",
+                                            key=f"{key_prefix}_model")
+                max_tokens = cols_2[0].number_input(f"{model}最大输出Token:",
+                                                    max_value=4096,
+                                                    min_value=0,
+                                                    value=conf["tokens"],
+                                                    help=f"最大值：4096；最小值：0",
+                                                    key=f"{key_prefix}_max_tokens")
+                temperature = cols_2[1].number_input(f"{model}模型随机性参数temperature:",
+                                                     max_value=1.0,
+                                                     min_value=0.0,
+                                                     value=conf["temperature"],
+                                                     help="模型随机性参数，数字越大，生成的结果随机性越大，一般为0.7，如果希望AI提供更多的想法，可以调大该数字",
+                                                     key=f"{key_prefix}_temperature")
+                top_p = cols_2[2].number_input(f"{model}模型随机性参数top:",
+                                               max_value=1.0,
+                                               min_value=0.0,
+                                               value=conf["top"],
+                                               help="模型随机性参数，接近 1 时：模型几乎会考虑所有可能的词，只有概率极低的词才会被排除，随机性也越强；",
+                                               key=f"{key_prefix}_top_p")
+
+                return [api_key, base_url, model, max_tokens, temperature,
+                        top_p, conf["base_url_list"], conf["model_list"], model_select]
 
             with pagination_2:
-                api_key_1, base_url_1, model_1, max_tokens_1, temperature_1, top_p_1 = model_param_section(
-                    "编写用例模型参数设置（更多参数等待探索）", key_prefix="param_1"
+                # 注意，当前的工作目录是run.py所在的目录
+                with open("./Templates/gen_cases_model_config.json", 'r') as f:
+                    gen_cases_model_config = json.load(f)
+                with open("./Templates/review_cases_model_config.json", 'r') as f:
+                    review_cases_model_config = json.load(f)
+
+                api_key_1, base_url_1, model_1, max_tokens_1, temperature_1, top_p_1, base_url_list_1, model_list_1, model_select_1 = model_param_section(
+                    "编写用例模型参数设置（更多参数等待探索）", key_prefix="param_1", config_value=gen_cases_model_config
                 )
 
-                api_key_2, base_url_2, model_2, max_tokens_2, temperature_2, top_p_2 = model_param_section(
-                    "评审用例模型参数设置", key_prefix="param_2"
+                api_key_2, base_url_2, model_2, max_tokens_2, temperature_2, top_p_2, base_url_list_2, model_list_2, model_select_2 = model_param_section(
+                    "评审用例模型参数设置", key_prefix="param_2", config_value=review_cases_model_config
                 )
 
                 if not st.session_state.no_image_analysis:
-                    api_key_3, base_url_3, model_3, max_tokens_3, temperature_3, top_p_3 = model_param_section(
-                        "文档解析模型参数设置", key_prefix="param_3"
+                    with open("./Templates/analysis_prd_model_config.json", 'r') as f:
+                        analysis_prd_model_config = json.load(f)
+                    api_key_3, base_url_3, model_3, max_tokens_3, temperature_3, top_p_3, base_url_list_3, model_list_3, model_select_3 = model_param_section(
+                        "文档解析模型参数设置", key_prefix="param_3", config_value=analysis_prd_model_config
                     )
-                    # TODO 保存的配置信息需要传给模型
 
+                # 保存的配置信息去覆盖原json配置中的内容
                 if st.button("保存配置"):
-                    pass
+                    try:
+                        with st.spinner("保存中..."):
+                            gen_cases_model_config[model_select_1] = {'api_key': api_key_1, 'base_url': base_url_1,
+                                                                      'model': model_1, 'tokens': max_tokens_1,
+                                                                      'temperature': temperature_1, 'top': top_p_1,
+                                                                      'base_url_list': base_url_list_1,
+                                                                      'model_list': model_list_1, }
+                            review_cases_model_config[model_select_2] = {'api_key': api_key_2, 'base_url': base_url_2,
+                                                                         'model': model_2, 'tokens': max_tokens_2,
+                                                                         'temperature': temperature_2, 'top': top_p_2,
+                                                                         'base_url_list': base_url_list_2,
+                                                                         'model_list': model_list_2, }
+                            with open("./Templates/gen_cases_model_config.json", 'w') as f:
+                                json.dump(gen_cases_model_config, f, indent=4)
+                            with open("./Templates/review_cases_model_config.json", 'w') as f:
+                                json.dump(review_cases_model_config, f, indent=4)
+                            if not st.session_state.no_image_analysis:
+                                analysis_prd_model_config[model_select_3] = {'api_key': api_key_3, 'base_url': base_url_3,
+                                                             'model': model_3, 'tokens': max_tokens_3,
+                                                             'temperature': temperature_3, 'top': top_p_3,
+                                                             'base_url_list': base_url_list_3,
+                                                             'model_list': model_list_3, }
+                                with open("./Templates/analysis_prd_model_config.json", 'w') as f:
+                                    json.dump(analysis_prd_model_config, f, indent=4)
+                        success_message = st.empty()
+                        success_message.success("配置已成功保存！")
+                        st.balloons()
+                        time.sleep(2)
+                        success_message.empty()
+                    except FileNotFoundError as e:
+                        st.error(f"文件未找到: {e}")
+                    except PermissionError as e:
+                        st.error(f"权限错误: {e}")
+                    except json.JSONDecodeError as e:
+                        st.error(f"JSON 解码错误: {e}")
+                    except Exception as e:
+                        st.error(f"配置保存失败！错误信息: {str(e)}")
+
+            with pagination_3:
+                st.write("需要谋划")
 
 
 if __name__ == "__main__":

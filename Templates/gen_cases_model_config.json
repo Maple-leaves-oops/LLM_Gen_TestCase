@@ -1,0 +1,16 @@
+{
+    "deepseek": {
+        "api_key": "sk-6cd9b40a077b4e81ac8380e77e5a186f",
+        "base_url": "https://api.deepseek.com/v1",
+        "model": "deepseek-chat",
+        "tokens": 4096,
+        "temperature": 0.04,
+        "top": 0.5,
+        "base_url_list": [
+            "https://api.deepseek.com/v1"
+        ],
+        "model_list": [
+            "deepseek-chat"
+        ]
+    }
+}
