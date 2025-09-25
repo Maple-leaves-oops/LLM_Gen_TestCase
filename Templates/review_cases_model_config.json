@@ -1,0 +1,27 @@
+{
+    "deepseek": {
+        "api_key": "sk-4aaa61320ab5486d8d8bcc95b5ef71da",
+        "base_url": "https://api.deepseek.com/v1",
+        "model": "deepseek-chat",
+        "base_url_list": [
+            "https://api.deepseek.com/v1"
+        ],
+        "model_list": [
+            "deepseek-chat"
+        ],
+        "model_info": {
+            "name": "deepseek-chat",
+            "parameters": {
+                "max_tokens": 4096,
+                "temperature": 0.7,
+                "top_p": 0.8
+            },
+            "family": "deepseek",
+            "functions": [],
+            "vision": false,
+            "json_output": true,
+            "function_calling": true,
+            "structured_output": true
+        }
+    }
+}
